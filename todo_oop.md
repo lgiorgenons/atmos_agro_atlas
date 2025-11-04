@@ -1,0 +1,143 @@
+# Plano de Migração para Arquitetura Orientada a Objetos (OO)
+
+Este documento descreve objetivos, análise do estado atual, arquitetura proposta, plano de migração por fases e checklist de progresso. Será atualizado ao longo do desenvolvimento, com itens “tickados” conforme concluídos.
+
+## Objetivos
+- Separação de responsabilidades (download, extração, índices, renderização, orquestração, API).
+- Testabilidade (unidades isoláveis, mocks de rede/FS).
+- Reuso e extensibilidade (novos índices, novas fontes de dados, novos mapas).
+- Observabilidade (logs consistentes, métricas), e configuração centralizada.
+- Compatibilidade: manter CLIs existentes enquanto migramos.
+
+## Estado atual (análise)
+- `scripts/satellite_pipeline.py`: monolítico; funções puras + dataclasses (`DownloadConfig`, `AreaOfInterest`, `IndexSpec`). Faz: autenticação, consulta OData, download, extração e cálculo de índices.
+- Renderização: `scripts/render_*` contém lógica sólida de mapas em funções, com dataclasses utilitárias (`PreparedRaster`).
+- API: `api/server.py` agrega orquestração de jobs (dataclass `JobInfo`, payload Pydantic) e expõe endpoints e estáticos. Faz chamadas diretas aos scripts.
+- Frontend: Vite/React, já com proxy para `/api`, `/mapas`, `/tabelas` (sem dependência direta da estrutura interna Python).
+
+Riscos/limites atuais:
+- Acoplamento entre etapas do pipeline em um único módulo.
+- Duplicação de parâmetros (tiles, clip, sharpen, etc.) entre scripts.
+- Dificuldade de mockar Copernicus/FS sem uma camada de serviço/abstração.
+
+## Arquitetura proposta (pacotes e classes)
+Estrutura sugerida (nomes podem ser ajustados):
+
+- `cana/` (novo pacote raiz)
+  - `config/`
+    - `settings.py` — `AppConfig` (Pydantic Settings): credenciais, paths, tuning.
+  - `datasources/`
+    - `copernicus.py` — `CopernicusClient`: autenticação OAuth2, query OData, download SAFE.
+  - `io/`
+    - `storage.py` — `PathResolver`, `FSCache` (cache simples em disco).
+    - `csv_export.py` — `CSVExporter` para índices/grades.
+  - `processing/`
+    - `aoi.py` — `AreaOfInterest` (WKT/GeoJSON utilitário).
+    - `safe_extractor.py` — `SafeExtractor`: extrai bandas, reprojeção/normalização.
+    - `indices.py` — `IndexCalculator` com estratégia por índice (NDVI/EVI/NDRE/...); fácil extensão (SIPI, NDVIre, MCARI2).
+  - `rendering/`
+    - `index_map.py` — `IndexMapRenderer` (um índice).
+    - `multi_index_map.py` — `MultiIndexMapRenderer` (várias camadas).
+    - `truecolor_map.py` — `TrueColorRenderer` (RGB).
+    - `overlay_map.py` — `OverlayRenderer` (true color + índices CSV).
+  - `workflow/`
+    - `orchestrator.py` — `WorkflowService`: orquestra download→extração→índices→CSV→mapas.
+    - `jobs.py` — `JobManager` e VO de status/logs (usado pela API).
+  - `api/`
+    - `routes.py` — funções FastAPI que usam `WorkflowService` e `JobManager` (substituir import direto dos scripts).
+
+Compatibilidade:
+- CLIs atuais (`scripts/*.py`) permanecem como “wrappers” chamando os serviços OO gradualmente.
+
+## Plano de migração (fases e tarefas)
+
+Legenda: [ ] pendente · [x] concluído · [~] em andamento
+
+- Fase 0 — Preparação
+  - [x] Criar este documento de plano (`todo_oop.md`).
+  - [x] Definir nome do pacote (`canasat`) e layout final de pastas.
+  - [x] Estrutura inicial de pacotes criada (`canasat/` com submódulos).
+  - [ ] Configuração base `AppConfig` (env vars, defaults) e logging consistente.
+
+- Fase 1 — Fonte de dados (Copernicus)
+  - [x] Extrair `CopernicusClient` (wrapper sobre funções legadas).
+  - [x] Injetar `CopernicusClient` em `WorkflowService` inicial.
+
+- Fase 2 — Extração de bandas
+  - [x] `SafeExtractor`: padronizar leitura e reprojecao; API clara: `extract_bands(product_path) -> Dict[str, Path]`.
+  - [ ] `FSCache`: reaproveitar reprojeções/arquivos.
+
+- Fase 3 — Cálculo de índices
+  - [x] `IndexCalculator`: interface por indice (Strategy); portar logica atual (NDVI, NDWI, MSI, EVI, NDRE, NDMI, NDRE1-4, CI_REDEDGE, SIPI).
+  - [ ] Extensões planejadas: SIPI, NDVIre, MCARI2 (já citadas nas pendências).
+
+- Fase 4 — Renderização
+  - [~] `IndexMapRenderer`, `CSVMapRenderer`, `MultiIndexMapRenderer`, `TrueColorRenderer`, `OverlayRenderer`, `BandGalleryRenderer`, `ComparisonMapRenderer`, `CSVDashboardRenderer`: principais visualizacoes migradas; restam apenas casos especificos do frontend (se houver).
+  - [~] Unificar parâmetros comuns (tiles, clip, sharpen, vmin/vmax, upsample, smooth) em tipos/regras centrais — `IndexMapOptions`/`MultiIndexMapOptions` criados; falta aplicar aos demais mapas.
+
+- Fase 5 — Exportação
+  - [ ] `CSVExporter`: exportação padronizada a partir de `PreparedRaster`/grades.
+
+- Fase 6 — Orquestração
+  - [x] `WorkflowService` inicial criado (usa utilitários legados).
+  - [x] Adaptação do CLI `scripts/run_full_workflow.py` para usar `WorkflowService` (com fallback legado).
+
+- Fase 7 — API
+  - [x] Integrar `WorkflowService` ao `api/server.py` com execução in-processo (fallback para script).
+  - [ ] Endpoints para workflow assíncrono, logs, produtos e artefatos (mantendo compatibilidade de URLs).
+
+- Fase 8 — Configuração e segurança
+  - [ ] `AppConfig` com Pydantic Settings (SENTINEL_* e paths), validação e secrets.
+  - [ ] Sanitização de logs (nunca logar senhas/tokens).
+
+- Fase 9 — Qualidade
+  - [ ] Tipagem estática (mypy) nas novas camadas.
+  - [ ] Testes unitários focados (CopernicusClient mocked, IndexCalculator determinístico).
+  - [ ] Documentação e exemplos por classe.
+
+- Fase 10 — Performance e DX
+  - [ ] Cache de produtos SAFE e rasters/índices (chaves por produto/parâmetros).
+  - [ ] Perfis de renderização (rápido vs qualidade).
+
+## Contratos propostos (rascunho)
+
+- `CopernicusClient`:
+  - `get_token() -> str`
+  - `query_latest(aoi: AreaOfInterest, start: date, end: date, cloud: tuple[int,int]) -> dict | None`
+  - `download(product: dict, dst_dir: Path) -> Path`  (zip/.SAFE)
+
+- `SafeExtractor`:
+  - `extract(product_path: Path, workdir: Path) -> dict[str, Path]`  (keys: blue, green, red, rededge1..4, nir, swir1, swir2)
+
+- `IndexCalculator`:
+  - `compute(bands: dict[str, Path], indices: list[str], out_dir: Path) -> dict[str, Path]`
+
+- `IndexMapRenderer`/`MultiIndexMapRenderer`/`TrueColorRenderer`/`OverlayRenderer`:
+  - `render(..., out: Path) -> Path`
+
+- `WorkflowService`:
+  - `run(date|date_range, aoi, cloud, dirs, indices, render_opts) -> WorkflowResult`
+
+## Riscos e mitigação
+- Divergência entre scripts e serviços: manter wrappers chamando serviços e testes de paridade (inputs/outputs).
+- Regressões em mapas: validar HTMLs gerados nas mesmas condições (tiles none, clip, vmin/vmax automáticos).
+- Tempo de migração: fatiar por fases; publicar ganhos incrementais.
+
+## Critérios de pronto (por fase)
+- Paridade funcional (mesmas entradas → mesmos arquivos de saída).
+- Logs úteis e erros claros.
+- Tipos/documentação atualizados.
+
+## Próximos passos imediatos
+1) Migrar os renderizadores restantes (gallery/comparison) para `canasat.rendering`, mantendo wrappers compatíveis.
+2) Iniciar a migração da camada de processamento criando `SafeExtractor` e `IndexCalculator` orientados a objetos.
+3) Definir estratégia de testes automatizados (mocks de raster/CSV) e revisar a API para aproveitar os novos serviços.
+
+---
+
+Progresso atual:
+- [x] Documento de plano criado.
+- [x] Estrutura inicial de pacotes criada (`canasat/`).
+- [x] Primeiro serviço migrado (CopernicusClient + WorkflowService).
+- [x] Wrapper CLI apontando para serviços (scripts principais delegam ao core).
+- [~] Renderização migrada — `IndexMapRenderer` e `MultiIndexMapRenderer` já estão orientados a objetos; faltam os demais renderizadores.

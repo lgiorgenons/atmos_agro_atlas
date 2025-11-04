@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+.env
+venv/
+ENV/
+.venv/
+.Python
+.idea/
+.vscode/
+.DS_Store
+/data
+/mapas
+/tabelas
+# API/runtime
+api/__pycache__/
+api/*.py[cod]
+
+# Frontend (npm)
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/*.local
+web/.env*
+web/bun.lockb
+/workspace
