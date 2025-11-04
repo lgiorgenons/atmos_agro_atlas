@@ -119,9 +119,10 @@ Legenda: [ ] pendente · [x] concluído · [~] em andamento
 - Tipos/documentação atualizados.
 
 ## Próximos passos imediatos
-1) Substituir dependências residuais do procedural (`scripts.satellite_pipeline`) dentro de `core.engine.facade` por serviços próprios.
-2) Estruturar `core.pipeline` (executor simples + definição de DAGs) e mapear necessidades de armazenamento/cache.
-3) Montar estratégia de testes automatizados (mocks de raster/CSV) e revisar a API para consumir o core desacoplado.
+1) Reescrever `WorkflowService` no `core.engine.facade` usando diretamente `CopernicusClient`, `SafeExtractor`, `IndexCalculator` e os renderizadores (sem depender do script procedural).
+2) Extrair os helpers ainda existentes em `scripts/satellite_pipeline.py` (autenticação, preparação de índices, utilidades) para serviços/classes dentro de `core.engine` ou `core.adapters`.
+3) Estruturar `core.pipeline` com um executor simples (ex.: `DAGExecutor`) e DAGs declarativas para sequenciar steps OO.
+4) Definir entidades em `core.domain` (por exemplo `Scene`, `IndexResult`) para substituir dicionários soltos e documentar contratos entre etapas.
 
 ---
 

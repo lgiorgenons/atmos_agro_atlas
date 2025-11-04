@@ -69,3 +69,16 @@ python scripts/render_comparison_map.py \
 - `docs/core/RELATORIO_MIGRACAO_CORE.md` – histórico das migrações.
 - `docs/core/todo_oop.md` – checklist detalhado das próximas fases.
 - `docs/core/Analise_Detalhada_Sindrome_Murcha_Cana.md` – base agronômica usada no design do pipeline.
+
+## Testes manuais sugeridos
+
+- `python scripts/render_index_map.py --index data/processed/<produto>/indices/ndvi.tif --geojson dados/map.geojson`
+  - Valida o pipeline de um único índice utilizando `core.engine.renderers.IndexMapRenderer`.
+- `python scripts/render_csv_map.py --csv tabelas/ndvi.csv --geojson dados/map.geojson`
+  - Garante que a reconstrução de grades CSV → mapa continua consistente.
+- `python scripts/render_truecolor_map.py --red data/processed/<produto>/red.tif --green ... --blue ...`
+  - Confere a composição RGB gerada por `TrueColorRenderer`.
+- `python scripts/render_multi_index_map.py --index data/processed/<produto>/indices/*.tif --geojson dados/map.geojson`
+  - Checa o mapa multi-índices utilizando o core refatorado.
+- `python scripts/run_full_workflow.py --date YYYY-MM-DD --geojson dados/map.geojson --cloud 0 30`
+  - Exercita o `WorkflowService` de ponta a ponta (download → extração → índices → mapas).

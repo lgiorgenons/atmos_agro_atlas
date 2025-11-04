@@ -5,16 +5,12 @@ from datetime import date
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from core.cfg.settings import AppConfig
 from core.adapters.catalog_copernicus import CopernicusClient, CopernicusConfig
+from core.cfg.settings import AppConfig
+from core.domain import AreaOfInterest
+from core.engine.index_calculator import INDEX_SPECS, IndexCalculator
 from core.engine.renderers import MultiIndexMapOptions, MultiIndexMapRenderer
-
-# Reuso das funções legadas enquanto migramos processamento
-from scripts.satellite_pipeline import (  # type: ignore
-    AreaOfInterest,
-    extract_bands_from_safe,
-    analyse_scene,
-)
+from core.engine.safe_extractor import DEFAULT_SENTINEL_BANDS, SafeExtractor
 
 
 @dataclass
@@ -28,12 +24,18 @@ class WorkflowResult:
 class WorkflowService:
     """Orquestra o fluxo: baixar/extrair/calcular/renderizar.
 
-    Esta primeira versão usa diretamente os utilitários legados e serve
-    como ponte durante a migração para OO completa.
     """
 
-    def __init__(self, cfg: Optional[AppConfig] = None):
+    def __init__(
+        self,
+        cfg: Optional[AppConfig] = None,
+        *,
+        extractor: Optional[SafeExtractor] = None,
+        calculator: Optional[IndexCalculator] = None,
+    ):
         self.cfg = cfg or AppConfig()
+        self.extractor = extractor or SafeExtractor(DEFAULT_SENTINEL_BANDS.copy())
+        self.calculator = calculator or IndexCalculator(INDEX_SPECS)
 
     def _client(self) -> CopernicusClient:
         if not self.cfg.SENTINEL_USERNAME or not self.cfg.SENTINEL_PASSWORD:
@@ -68,7 +70,7 @@ class WorkflowService:
         client = self._client()
         aoi = AreaOfInterest.from_geojson(aoi_geojson)
         with client.open_session() as session:
-            product = client.query_latest(session, aoi.geometry, start, end, cloud)
+            product = client.query_latest(session, aoi, start, end, cloud)
             if not product:
                 raise RuntimeError("Nenhum produto encontrado para os parâmetros informados.")
             product_path = client.download(session, product, self.cfg.DATA_RAW_DIR)
@@ -76,12 +78,12 @@ class WorkflowService:
 
         # 2) Extract bands
         work_product_dir = self.cfg.DATA_PROCESSED_DIR / product_title
-        bands = extract_bands_from_safe(product_path, work_product_dir)  # type: ignore[arg-type]
+        bands = self.extractor.extract(product_path, work_product_dir)
 
         # 3) Compute indices
         idx_dir = work_product_dir / "indices"
         indices_req = list(indices) if indices is not None else None
-        outputs = analyse_scene(bands, idx_dir, indices=indices_req)
+        outputs = self.calculator.analyse_scene(bands, idx_dir, indices=indices_req)
 
         # 4) Render multi-index map
         self.cfg.MAPAS_DIR.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,9 @@
+# Core processing dependencies
+affine
+branca
+folium
+matplotlib
+numpy
+rasterio
+requests
+scipy
