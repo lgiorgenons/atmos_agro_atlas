@@ -1,6 +1,6 @@
 """Gera um mapa interativo com múltiplas camadas de índices.
 
-Este wrapper delega para o core (`canasat.rendering`) que concentra a lógica de
+Este wrapper delega para o core (`core.engine.renderers`) que concentra a lógica de
 processamento e renderização. Assim a API/CLI continuam finas enquanto o core
 pode ser reutilizado por outros consumidores (workers, notebooks, etc.).
 """
@@ -10,7 +10,7 @@ import argparse
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
 
-from canasat.rendering import MultiIndexMapOptions, MultiIndexMapRenderer
+from core.engine.renderers import MultiIndexMapOptions, MultiIndexMapRenderer
 
 DEFAULT_CMAP = "RdYlGn"
 

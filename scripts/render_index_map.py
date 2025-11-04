@@ -1,7 +1,7 @@
 """Generate an interactive HTML map overlaying a spectral indice GeoTIFF.
 
 Este script mantem a CLI original, mas delega a logica principal para o core
-orientado a objetos (`canasat.rendering.IndexMapRenderer`). As funcoes
+orientado a objetos (`core.engine.renderers.IndexMapRenderer`). As funcoes
 `prepare_map_data`, `build_map` e `export_csv` continuam disponiveis para
 compatibilidade com outros scripts legados.
 """
@@ -11,7 +11,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import (
+from core.engine.renderers import (
     IndexMapOptions,
     IndexMapRenderer,
     PreparedRaster,

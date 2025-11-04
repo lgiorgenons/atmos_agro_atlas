@@ -88,10 +88,9 @@ O retorno sobre o investimento (ROI) de uma plataforma de monitoramento se mater
 
 O plano de transformar a API em um “core” de processamento dedicado é coerente com as necessidades identificadas nesta análise:
 
-- **Separação de responsabilidades:** o novo pacote `canasat/` centraliza datasources, processamento de rasters e renderização dos mapas. Com isso a API passa a ser um consumidor fino que apenas agenda jobs e distribui resultados para o banco/dashboards.
+- **Separação de responsabilidades:** o novo pacote `core/` centraliza datasources, processamento de rasters e renderização dos mapas. Com isso a API passa a ser um consumidor fino que apenas agenda jobs e distribui resultados para o banco/dashboards.
 - **Escalabilidade de fontes:** a consolidação do core facilita a incorporação de novos sensores (Landsat, ECOSTRESS, SMAP/CHIRPS) sugeridos nas seções 3 e 4 sem alterar os clientes (API, web, pipelines).
 - **Evolução rápida dos índices:** índices adicionais, máscaras temporais e estatísticas podem ser implementados como estratégias no core — o workflow e a API só precisam orquestrar a sequência desejada.
 - **Observabilidade e governança:** mantendo o processamento no core fica mais simples padronizar logs, métricas e políticas de armazenamento mencionadas como próximos passos.
 
 Com essa camada centralizada, o backend passa a focar em persistência e entrega (ex.: envio de resultados ao banco de dados agrícola), enquanto o core continua evoluindo para incorporar as análises agronômicas destacadas.
-

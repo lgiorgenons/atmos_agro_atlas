@@ -1,6 +1,6 @@
-# Core de Processamento (`canasat`)
+# Core de Processamento (`core`)
 
-Este módulo concentra todo o processamento de imagens Sentinel‑2 (download, extração de bandas, cálculo de índices e renderização de produtos). Os antigos scripts permaneceram como _wrappers_ finos para manter compatibilidade, mas toda a lógica vive aqui.
+Este módulo concentra todo o processamento de imagens Sentinel‑2 (download, extração de bandas, cálculo de índices e renderização de produtos). Os scripts Python da raiz permanecem como _wrappers_ finos para manter compatibilidade, mas toda a lógica vive agora em `core/`.
 
 ## Requisitos
 
@@ -43,19 +43,25 @@ python scripts/render_comparison_map.py \
   --geojson dados/map.geojson
 ```
 
-> Todos os renderizadores (index, CSV, true color, overlay, galeria, dashboards) estão implementados como classes em `canasat.rendering.*`. Os scripts acima apenas configuram as opções e chamam `render(...)`.
+> Todos os renderizadores (index, CSV, true color, overlay, galeria, dashboards) estão implementados como classes em `core.engine.renderers.*`. Os scripts acima apenas configuram as opções e chamam `render(...)`.
 
 ## Componentes principais
 
-- `canasat.processing`
+- `core.engine.safe_extractor`
   - `SafeExtractor`: extrai e normaliza as bandas de um SAFE.
+  - `DEFAULT_SENTINEL_BANDS`: mapeamento padronizado das bandas Sentinel‑2.
+- `core.engine.index_calculator`
   - `IndexCalculator`: calcula NDVI, NDWI, MSI, NDRE, NDMI, CI Red-Edge, SIPI etc.
-- `canasat.rendering`
+- `core.engine.renderers`
   - `IndexMapRenderer`, `CSVMapRenderer`, `CSVDashboardRenderer`
   - `TrueColorRenderer`, `TrueColorOverlayRenderer`, `MultiIndexMapRenderer`
   - `BandGalleryRenderer`, `ComparisonMapRenderer`
-- `canasat.workflow`
-  - `WorkflowService`: orquestra download → extração → índices → mapas.
+- `core.engine.facade`
+  - `WorkflowService`: orquestra download → extração → índices → mapas (faz _bridge_ com o legado enquanto evoluímos para OO completo).
+- `core.adapters.catalog_copernicus`
+  - `CopernicusClient`: encapsula autenticação e downloads usando o Data Space.
+- `core.cfg.settings`
+  - `AppConfig`: centraliza diretórios e credenciais lidas de ambiente.
 
 ## Documentação complementar
 

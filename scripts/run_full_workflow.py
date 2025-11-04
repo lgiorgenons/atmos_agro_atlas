@@ -31,11 +31,11 @@ from satellite_pipeline import (
 
 # OO orchestration (optional, used when available)
 try:
-    from canasat.workflow.orchestrator import WorkflowService
-    from canasat.config.settings import AppConfig
-    _HAS_CANASAT = True
+    from core.engine.facade import WorkflowService
+    from core.cfg.settings import AppConfig
+    _HAS_CORE = True
 except Exception:  # pragma: no cover - optional during migration
-    _HAS_CANASAT = False
+    _HAS_CORE = False
 
 from render_index_map import (
     build_map as build_index_map,
@@ -43,10 +43,12 @@ from render_index_map import (
     prepare_map_data,
 )
 try:
-    from canasat.rendering import build_multi_map, build_truecolor_map  # type: ignore
+    from core.engine.renderers import build_multi_map, build_truecolor_map  # type: ignore
+    _HAS_RENDERERS = True
 except Exception:  # pragma: no cover - fallback durante migração
     from render_multi_index_map import build_multi_map  # type: ignore
     from render_truecolor_map import build_truecolor_map  # type: ignore
+    _HAS_RENDERERS = False
 from render_csv_map import (
     _prepare_from_csv,
     build_map as build_csv_map,
@@ -264,7 +266,7 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
         bands = extract_bands_from_safe(product_path, workdir / product_title)
         outputs = analyse_scene(bands, workdir / product_title / "indices", indices=selected_indices)
     else:
-        if _HAS_CANASAT:
+        if _HAS_CORE:
             # Preferir a orquestração OO quando disponível
             cfg = AppConfig(
                 DATA_RAW_DIR=download_dir,

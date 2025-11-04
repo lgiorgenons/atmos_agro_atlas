@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import CSVDashboardOptions, CSVDashboardRenderer
+from core.engine.renderers import CSVDashboardOptions, CSVDashboardRenderer
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
@@ -73,4 +73,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

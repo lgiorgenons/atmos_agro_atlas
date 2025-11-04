@@ -10,9 +10,9 @@ from branca.colormap import LinearColormap
 from folium.plugins import DualMap
 from matplotlib import colormaps, colors
 
-from canasat.rendering.geoutils import load_geojson
-from canasat.rendering.index_map import IndexMapOptions, IndexMapRenderer
-from canasat.rendering.raster import generate_rgba
+from .geoutils import load_geojson
+from .index_map import IndexMapOptions, IndexMapRenderer
+from .raster import generate_rgba
 
 
 @dataclass

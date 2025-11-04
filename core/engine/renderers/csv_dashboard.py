@@ -5,15 +5,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence
 
-from canasat.rendering import (
-    CSVMapOptions,
-    CSVMapRenderer,
-    IndexMapData,
-    IndexMapOptions,
-    IndexMapRenderer,
-    TrueColorOptions,
-    TrueColorRenderer,
-)
+from .csv_map import CSVMapOptions, CSVMapRenderer
+from .index_map import IndexMapData, IndexMapOptions, IndexMapRenderer
+from .truecolor_map import TrueColorOptions, TrueColorRenderer
 
 
 @dataclass

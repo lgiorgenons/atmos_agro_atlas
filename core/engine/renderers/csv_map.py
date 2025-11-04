@@ -8,10 +8,10 @@ import folium
 import numpy as np
 from branca.colormap import LinearColormap
 
-from canasat.rendering.csv_utils import build_grid, expand_to_clip_bounds, load_csv_grid
-from canasat.rendering.geoutils import extract_geometry_bounds, load_geojson
-from canasat.rendering.index_map import IndexMapData, IndexMapOptions, IndexMapRenderer
-from canasat.rendering.raster import apply_smoothing, apply_unsharp_mask, upsample_raster
+from .csv_utils import build_grid, expand_to_clip_bounds, load_csv_grid
+from .geoutils import extract_geometry_bounds, load_geojson
+from .index_map import IndexMapData, IndexMapOptions, IndexMapRenderer
+from .raster import apply_smoothing, apply_unsharp_mask, upsample_raster
 
 
 @dataclass

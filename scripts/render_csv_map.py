@@ -1,14 +1,14 @@
 """Renderiza um mapa interativo a partir de um CSV (lon, lat, value) exportado do pipeline.
 
-CLI fina que delega ao core (`canasat.rendering.CSVMapRenderer`).
+CLI fina que delega ao core (`core.engine.renderers.CSVMapRenderer`).
 """
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-from typing import Optional, Sequence
+from typing import Iterable, Optional, Sequence
 
-from canasat.rendering import (
+from core.engine.renderers import (
     CSVMapOptions,
     CSVMapRenderer,
     PreparedRaster,

@@ -23,28 +23,18 @@ Riscos/limites atuais:
 ## Arquitetura proposta (pacotes e classes)
 Estrutura sugerida (nomes podem ser ajustados):
 
-- `cana/` (novo pacote raiz)
-  - `config/`
-    - `settings.py` — `AppConfig` (Pydantic Settings): credenciais, paths, tuning.
-  - `datasources/`
-    - `copernicus.py` — `CopernicusClient`: autenticação OAuth2, query OData, download SAFE.
-  - `io/`
-    - `storage.py` — `PathResolver`, `FSCache` (cache simples em disco).
-    - `csv_export.py` — `CSVExporter` para índices/grades.
-  - `processing/`
-    - `aoi.py` — `AreaOfInterest` (WKT/GeoJSON utilitário).
-    - `safe_extractor.py` — `SafeExtractor`: extrai bandas, reprojeção/normalização.
-    - `indices.py` — `IndexCalculator` com estratégia por índice (NDVI/EVI/NDRE/...); fácil extensão (SIPI, NDVIre, MCARI2).
-  - `rendering/`
-    - `index_map.py` — `IndexMapRenderer` (um índice).
-    - `multi_index_map.py` — `MultiIndexMapRenderer` (várias camadas).
-    - `truecolor_map.py` — `TrueColorRenderer` (RGB).
-    - `overlay_map.py` — `OverlayRenderer` (true color + índices CSV).
-  - `workflow/`
-    - `orchestrator.py` — `WorkflowService`: orquestra download→extração→índices→CSV→mapas.
-    - `jobs.py` — `JobManager` e VO de status/logs (usado pela API).
-  - `api/`
-    - `routes.py` — funções FastAPI que usam `WorkflowService` e `JobManager` (substituir import direto dos scripts).
+- `core/` (pacote raiz do processamento)
+  - `cfg/settings.py` — `AppConfig` (Settings simples por enquanto; evoluir para Pydantic).
+  - `adapters/catalog_copernicus.py` — `CopernicusClient`: autenticação OAuth2, query OData, download SAFE.
+  - `engine/safe_extractor.py` — `SafeExtractor`: extrai bandas, reprojeção/normalização.
+  - `engine/index_calculator.py` — `IndexCalculator` Strategy por índice (NDVI/EVI/NDRE/...).
+  - `engine/renderers/` — renderizadores OO (index, multi-index, CSV, true color, overlay, gallery, dashboards, comparison).
+  - `engine/facade.py` — `WorkflowService`: orquestra download→extração→índices→mapas (faz ponte com legado).
+  - `domain/` — espaço reservado para entidades/serviços puros (futuros value objects).
+  - `pipeline/` — executor de DAG e definições declarativas (pendente).
+  - `bindings/` — interface para kernels C++/pybind11 (pendente).
+  - `scripts/` — wrappers CLI finos para manter compatibilidade.
+  - `tests/` — suíte unitária/integrada (precisa ser preenchida).
 
 Compatibilidade:
 - CLIs atuais (`scripts/*.py`) permanecem como “wrappers” chamando os serviços OO gradualmente.
@@ -55,8 +45,8 @@ Legenda: [ ] pendente · [x] concluído · [~] em andamento
 
 - Fase 0 — Preparação
   - [x] Criar este documento de plano (`todo_oop.md`).
-  - [x] Definir nome do pacote (`canasat`) e layout final de pastas.
-  - [x] Estrutura inicial de pacotes criada (`canasat/` com submódulos).
+  - [x] Definir nome do pacote (`core`) e layout final de pastas.
+  - [x] Estrutura inicial de pacotes criada (`core/` com submódulos).
   - [ ] Configuração base `AppConfig` (env vars, defaults) e logging consistente.
 
 - Fase 1 — Fonte de dados (Copernicus)
@@ -129,15 +119,15 @@ Legenda: [ ] pendente · [x] concluído · [~] em andamento
 - Tipos/documentação atualizados.
 
 ## Próximos passos imediatos
-1) Migrar os renderizadores restantes (gallery/comparison) para `canasat.rendering`, mantendo wrappers compatíveis.
-2) Iniciar a migração da camada de processamento criando `SafeExtractor` e `IndexCalculator` orientados a objetos.
-3) Definir estratégia de testes automatizados (mocks de raster/CSV) e revisar a API para aproveitar os novos serviços.
+1) Substituir dependências residuais do procedural (`scripts.satellite_pipeline`) dentro de `core.engine.facade` por serviços próprios.
+2) Estruturar `core.pipeline` (executor simples + definição de DAGs) e mapear necessidades de armazenamento/cache.
+3) Montar estratégia de testes automatizados (mocks de raster/CSV) e revisar a API para consumir o core desacoplado.
 
 ---
 
 Progresso atual:
 - [x] Documento de plano criado.
-- [x] Estrutura inicial de pacotes criada (`canasat/`).
+- [x] Estrutura inicial de pacotes criada (`core/`).
 - [x] Primeiro serviço migrado (CopernicusClient + WorkflowService).
 - [x] Wrapper CLI apontando para serviços (scripts principais delegam ao core).
-- [~] Renderização migrada — `IndexMapRenderer` e `MultiIndexMapRenderer` já estão orientados a objetos; faltam os demais renderizadores.
+- [x] Renderização migrada — principais renderizadores agora vivem em `core.engine.renderers`.

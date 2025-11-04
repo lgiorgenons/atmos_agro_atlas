@@ -5,9 +5,9 @@ from datetime import date
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from canasat.config.settings import AppConfig
-from canasat.datasources.copernicus import CopernicusClient, CopernicusConfig
-from canasat.rendering import MultiIndexMapOptions, MultiIndexMapRenderer
+from core.cfg.settings import AppConfig
+from core.adapters.catalog_copernicus import CopernicusClient, CopernicusConfig
+from core.engine.renderers import MultiIndexMapOptions, MultiIndexMapRenderer
 
 # Reuso das funções legadas enquanto migramos processamento
 from scripts.satellite_pipeline import (  # type: ignore

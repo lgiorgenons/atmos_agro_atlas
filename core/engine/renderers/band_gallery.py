@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.colors import Normalize
 
-from canasat.rendering.geoutils import extract_geometry_bounds, iterate_geometries, load_geojson
-from canasat.rendering.raster import load_raster
+from .geoutils import extract_geometry_bounds, iterate_geometries, load_geojson
+from .raster import load_raster
 
 BAND_ORDER = [
     ("coastal", "B01 Coastal/Aerosol"),

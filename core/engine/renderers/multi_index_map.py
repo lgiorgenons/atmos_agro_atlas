@@ -11,8 +11,8 @@ from matplotlib import colormaps, colors
 from rasterio import Affine
 from rasterio.features import rasterize
 
-from canasat.rendering.geoutils import extract_geometry_bounds, iterate_geometries, load_geojson
-from canasat.rendering.raster import apply_smoothing, apply_unsharp_mask, generate_rgba, load_raster, upsample_raster
+from .geoutils import extract_geometry_bounds, iterate_geometries, load_geojson
+from .raster import apply_smoothing, apply_unsharp_mask, generate_rgba, load_raster, upsample_raster
 
 
 @dataclass

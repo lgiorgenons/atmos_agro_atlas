@@ -1,18 +1,11 @@
-"""canasat – Toolkit OO para monitoramento da cana via satélite.
+"""Compatibilidade durante a migração para o novo pacote `core`.
 
-Este pacote fornece camadas orientadas a objetos para:
-- acesso a dados (Copernicus Data Space),
-- extração e processamento de bandas/índices,
-- renderização de mapas,
-- e orquestração de workflows.
-
-Os scripts existentes em `scripts/` continuam funcionando; as classes
-de `canasat` serão chamadas por eles gradualmente durante a migração.
+Todo o processamento orientado a objetos agora vive no pacote `core`.
+Este módulo apenas reexporta o conteúdo do novo core para manter
+imports transitórios funcionais enquanto atualizamos o restante do código.
 """
 
-__all__ = [
-    "config",
-    "datasources",
-    "workflow",
-]
+from core import *  # type: ignore  # noqa: F401,F403
+from core import __all__ as _core_all  # type: ignore
 
+__all__ = list(_core_all)

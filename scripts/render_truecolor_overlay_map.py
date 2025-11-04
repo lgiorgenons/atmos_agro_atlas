@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import (
+from core.engine.renderers import (
     OverlayMapOptions,
     TrueColorOverlayRenderer,
     build_overlay_map as core_build_overlay_map,

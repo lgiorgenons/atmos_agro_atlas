@@ -7,9 +7,9 @@ from typing import Iterable, List, Optional, Sequence
 import folium
 from branca.colormap import LinearColormap
 
-from canasat.rendering.csv_map import CSVMapOptions, CSVMapRenderer
-from canasat.rendering.truecolor_map import TrueColorOptions, TrueColorRenderer
-from canasat.rendering.raster import generate_rgba
+from .csv_map import CSVMapOptions, CSVMapRenderer
+from .truecolor_map import TrueColorOptions, TrueColorRenderer
+from .raster import generate_rgba
 
 
 @dataclass

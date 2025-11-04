@@ -18,4 +18,4 @@
 - Incorporar análises agronômicas adicionais (relatórios gráficos ou alertas) usando os rasters gerados como entrada.
 - Definir estratégia de armazenamento para os SAFE baixados (limpeza periódica ou upload para bucket dedicado).
 - Integrar sensores complementares (Landsat/ECOSTRESS, SMAP/CHIRPS, Sentinel-1) e basemaps de maior resolução quando houver conectividade, mantendo claro o limite de 10 m do Sentinel-2.
-- Consolidar a migração dos renderizadores para o core (`canasat.rendering`): mapas single-index (`IndexMapRenderer`), CSV (`CSVMapRenderer`), true color (`TrueColorRenderer`) e overlay (`TrueColorOverlayRenderer`) já estão em classes; demais scripts permanecem como wrappers legados.
+- Consolidar a migração dos renderizadores para o core (`core.engine.renderers`): mapas single-index (`IndexMapRenderer`), CSV (`CSVMapRenderer`), true color (`TrueColorRenderer`) e overlay (`TrueColorOverlayRenderer`) já estão em classes; demais scripts permanecem como wrappers legados.

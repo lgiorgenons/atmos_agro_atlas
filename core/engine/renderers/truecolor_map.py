@@ -10,8 +10,8 @@ from branca.colormap import LinearColormap
 from rasterio.enums import Resampling
 from rasterio.warp import reproject
 
-from canasat.rendering.geoutils import extract_geometry_bounds, load_geojson
-from canasat.rendering.raster import TARGET_CRS, apply_unsharp_mask, load_raster
+from .geoutils import extract_geometry_bounds, load_geojson
+from .raster import TARGET_CRS, apply_unsharp_mask, load_raster
 
 
 @dataclass

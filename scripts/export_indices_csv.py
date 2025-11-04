@@ -9,7 +9,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import IndexMapOptions, IndexMapRenderer
+from core.engine.renderers import IndexMapOptions, IndexMapRenderer
 
 
 def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:

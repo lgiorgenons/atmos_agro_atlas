@@ -1,2 +1,0 @@
-"""Configurações da aplicação (settings)."""
-

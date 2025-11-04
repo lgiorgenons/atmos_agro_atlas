@@ -30,7 +30,8 @@ from urllib.parse import urljoin
 import rasterio
 import requests
 
-from canasat.processing import DEFAULT_SENTINEL_BANDS, INDEX_SPECS, IndexCalculator, SafeExtractor
+from core.engine.index_calculator import INDEX_SPECS, IndexCalculator
+from core.engine.safe_extractor import DEFAULT_SENTINEL_BANDS, SafeExtractor
 
 
 _LOGGER = logging.getLogger(__name__)

@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import BandGalleryOptions, BandGalleryRenderer, build_gallery as core_build_gallery
+from core.engine.renderers import BandGalleryOptions, BandGalleryRenderer, build_gallery as core_build_gallery
 
 build_gallery = core_build_gallery
 
@@ -40,4 +40,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

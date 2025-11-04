@@ -5,7 +5,7 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import (
+from core.engine.renderers import (
     ComparisonMapOptions,
     ComparisonMapRenderer,
     build_comparison_map as core_build_comparison_map,
@@ -58,4 +58,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-

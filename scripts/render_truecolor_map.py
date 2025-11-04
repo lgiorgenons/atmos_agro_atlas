@@ -1,6 +1,6 @@
 """Renderiza um mapa interativo com composicao RGB (true color) a partir de bandas Sentinel-2.
 
-CLI fina que delega o trabalho ao core OO (`canasat.rendering.TrueColorRenderer`).
+CLI fina que delega o trabalho ao core OO (`core.engine.renderers.TrueColorRenderer`).
 """
 from __future__ import annotations
 
@@ -8,7 +8,11 @@ import argparse
 from pathlib import Path
 from typing import Optional, Sequence
 
-from canasat.rendering import TrueColorOptions, TrueColorRenderer, build_truecolor_map as core_build_truecolor_map
+from core.engine.renderers import (
+    TrueColorOptions,
+    TrueColorRenderer,
+    build_truecolor_map as core_build_truecolor_map,
+)
 
 # Compatibilidade com importacoes legadas
 build_truecolor_map = core_build_truecolor_map
@@ -60,4 +64,3 @@ def main(argv: Optional[Sequence[str]] = None) -> None:
 
 if __name__ == "__main__":
     main()
-
