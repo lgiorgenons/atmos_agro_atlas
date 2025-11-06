@@ -26,7 +26,7 @@ class ComparisonMapOptions:
     sharpen_amount: float = 1.5
     tiles: str = "OpenStreetMap"
     tile_attr: Optional[str] = None
-    max_zoom: int = 19
+    max_zoom: int = 26
 
 
 class ComparisonMapRenderer:
@@ -139,7 +139,7 @@ def build_comparison_map(
     sharpen_amount: float = 1.5,
     basemap: str = "OpenStreetMap",
     attr: Optional[str] = None,
-    max_zoom: int = 19,
+    max_zoom: int = 26,
 ) -> Path:
     renderer = ComparisonMapRenderer(
         ComparisonMapOptions(

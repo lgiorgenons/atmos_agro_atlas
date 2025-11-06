@@ -25,6 +25,8 @@ class TrueColorOptions:
     stretch_lower: float = 2.0
     stretch_upper: float = 98.0
     zoom_start: int = 12
+    min_zoom: int = 8
+    max_zoom: int = 26
 
 
 @dataclass
@@ -103,21 +105,35 @@ class TrueColorRenderer:
         return output_path
 
     def _build_base_map(self, centre_lat: float, centre_lon: float) -> folium.Map:
-        if self.options.tiles.lower() == "none":
-            return folium.Map(location=[centre_lat, centre_lon], zoom_start=self.options.zoom_start, tiles=None)
         base_map = folium.Map(
             location=[centre_lat, centre_lon],
             zoom_start=self.options.zoom_start,
-            tiles=self.options.tiles,
-            attr=self.options.tile_attr,
+            tiles=None,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
         )
+
+        # Adiciona Esri World Imagery como camada base padrão
         folium.TileLayer(
             tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             attr="Esri World Imagery",
             name="Esri World Imagery",
             overlay=False,
             control=True,
+            max_zoom=self.options.max_zoom,
         ).add_to(base_map)
+
+        # Camada alternativa (fallback) caso desejado
+        if self.options.tiles.lower() != "none":
+            folium.TileLayer(
+                tiles=self.options.tiles,
+                attr=self.options.tile_attr,
+                name=self.options.tiles,
+                overlay=False,
+                control=True,
+                max_zoom=self.options.max_zoom,
+            ).add_to(base_map)
+
         return base_map
 
     def _compute_clip_bounds(
