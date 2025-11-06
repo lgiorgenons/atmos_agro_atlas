@@ -56,6 +56,17 @@ class SafeExtractor:
                 continue
 
             tif_path = destination / f"{alias}.tif"
+            if tif_path.exists():
+                try:
+                    tif_mtime = tif_path.stat().st_mtime
+                    jp2_mtime = jp2_path.stat().st_mtime
+                    if tif_mtime >= jp2_mtime:
+                        _LOGGER.debug("Reusing cached band %s at %s", alias, tif_path)
+                        extracted[alias] = tif_path
+                        continue
+                except OSError:
+                    pass
+
             with rasterio.open(jp2_path) as src:
                 profile = src.profile
                 data = src.read(1)

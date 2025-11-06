@@ -12,11 +12,12 @@ from matplotlib import colormaps, colors
 
 from .geoutils import load_geojson
 from .index_map import IndexMapOptions, IndexMapRenderer
+from .options import BaseMapOptions
 from .raster import generate_rgba
 
 
 @dataclass
-class ComparisonMapOptions:
+class ComparisonMapOptions(BaseMapOptions):
     colormap: str = "RdYlGn"
     opacity: float = 0.75
     vmin: Optional[float] = None
@@ -24,9 +25,6 @@ class ComparisonMapOptions:
     sharpen: bool = False
     sharpen_radius: float = 1.2
     sharpen_amount: float = 1.5
-    tiles: str = "OpenStreetMap"
-    tile_attr: Optional[str] = None
-    max_zoom: int = 26
 
 
 class ComparisonMapRenderer:
@@ -73,7 +71,7 @@ class ComparisonMapRenderer:
 
         dual_map = DualMap(
             location=[centre_lat, centre_lon],
-            zoom_start=14,
+            zoom_start=self.options.zoom_start,
             tiles=None,
             max_zoom=self.options.max_zoom,
         )
@@ -110,12 +108,18 @@ class ComparisonMapRenderer:
         return output_path
 
     def _add_basemap(self, map_obj: folium.Map) -> None:
+        native_limit = (
+            self.options.max_native_zoom if not self.options.allow_basemap_stretch else self.options.max_zoom
+        )
         if self.options.tiles.lower() != "none":
             folium.TileLayer(
                 tiles=self.options.tiles,
                 attr=self.options.tile_attr,
                 name="Basemap",
                 control=False,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=native_limit,
             ).add_to(map_obj)
         folium.TileLayer(
             tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -123,6 +127,9 @@ class ComparisonMapRenderer:
             name="Esri World Imagery",
             overlay=False,
             control=True,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
+            max_native_zoom=native_limit,
         ).add_to(map_obj)
 
 

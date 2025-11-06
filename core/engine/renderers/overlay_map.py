@@ -8,25 +8,17 @@ import folium
 from branca.colormap import LinearColormap
 
 from .csv_map import CSVMapOptions, CSVMapRenderer
+from .options import BaseMapOptions
 from .truecolor_map import TrueColorOptions, TrueColorRenderer
 from .raster import generate_rgba
 
 
 @dataclass
-class OverlayMapOptions:
-    tiles: str = "CartoDB positron"
-    tile_attr: Optional[str] = None
-    padding_factor: float = 0.3
-    clip: bool = False
+class OverlayMapOptions(BaseMapOptions):
     colormap: str = "RdYlGn"
     opacity: float = 0.75
     vmin: Optional[float] = None
     vmax: Optional[float] = None
-    upsample: float = 1.0
-    sharpen: bool = False
-    sharpen_radius: float = 1.0
-    sharpen_amount: float = 1.3
-    smooth_radius: float = 0.0
 
 
 class TrueColorOverlayRenderer:
@@ -55,6 +47,13 @@ class TrueColorOverlayRenderer:
                 sharpen=self.options.sharpen,
                 sharpen_radius=self.options.sharpen_radius,
                 sharpen_amount=self.options.sharpen_amount,
+                smooth_radius=self.options.smooth_radius,
+                saturation_boost=1.2,
+                zoom_start=self.options.zoom_start,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=self.options.max_native_zoom,
+                show_esri=self.options.tiles.lower() != "none",
             )
         )
         truecolor_data = truecolor_renderer.prepare(
@@ -137,9 +136,28 @@ class TrueColorOverlayRenderer:
         return base_map
 
     def _build_base_map(self, centre_lat: float, centre_lon: float) -> folium.Map:
-        if self.options.tiles.lower() == "none":
-            return folium.Map(location=[centre_lat, centre_lon], zoom_start=12, tiles=None)
-        return folium.Map(location=[centre_lat, centre_lon], zoom_start=12, tiles=self.options.tiles, attr=self.options.tile_attr)
+        base_map = folium.Map(
+            location=[centre_lat, centre_lon],
+            zoom_start=self.options.zoom_start,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
+            tiles=None,
+        )
+        native_limit = (
+            self.options.max_native_zoom if not self.options.allow_basemap_stretch else self.options.max_zoom
+        )
+        if self.options.tiles.lower() != "none":
+            folium.TileLayer(
+                tiles=self.options.tiles,
+                attr=self.options.tile_attr,
+                name=self.options.tiles,
+                overlay=False,
+                control=True,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=native_limit,
+            ).add_to(base_map)
+        return base_map
 
 
 def build_overlay_map(

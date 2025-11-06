@@ -54,6 +54,18 @@ def compute_sipi(nir: np.ndarray, red: np.ndarray, blue: np.ndarray) -> np.ndarr
     return _compute_index(nir - blue, nir - red)
 
 
+def compute_ndvire(nir: np.ndarray, rededge: np.ndarray) -> np.ndarray:
+    return _compute_index(nir - rededge, nir + rededge)
+
+
+def compute_mcari2(nir: np.ndarray, red: np.ndarray, green: np.ndarray) -> np.ndarray:
+    numerator = 1.5 * (2.5 * (nir - red) - 1.3 * (nir - green))
+    denominator = np.sqrt((2.0 * nir + 1.0) ** 2 - (6.0 * nir - 5.0 * np.sqrt(np.maximum(red, 0))) - 0.5)
+    # Avoid division by zero
+    denominator = np.where(denominator == 0, np.nan, denominator)
+    return np.where(np.isnan(denominator), 0.0, numerator / denominator)
+
+
 def load_raster(path: Path, reference_path: Optional[Path] = None) -> Tuple[np.ndarray, rasterio.Affine, rasterio.crs.CRS]:
     with rasterio.open(path) as src:
         data = src.read(1).astype(np.float32)
@@ -111,6 +123,8 @@ INDEX_SPECS: Dict[str, IndexSpec] = {
     "ndre4": IndexSpec(bands=("nir", "rededge4"), func=compute_ndre_generic),
     "ci_rededge": IndexSpec(bands=("nir", "rededge4"), func=compute_ci_rededge),
     "sipi": IndexSpec(bands=("nir", "red", "blue"), func=compute_sipi),
+    "ndvire": IndexSpec(bands=("nir", "rededge1"), func=compute_ndvire),
+    "mcari2": IndexSpec(bands=("nir", "red", "green"), func=compute_mcari2),
 }
 
 

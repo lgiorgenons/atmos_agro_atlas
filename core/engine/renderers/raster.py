@@ -26,6 +26,11 @@ def load_raster(
             bottom = max(bottom, src.bounds.bottom)
             right = min(right, src.bounds.right)
             top = min(top, src.bounds.top)
+            if left >= right or bottom >= top:
+                raise ValueError(
+                    "O GeoJSON informado não intersecta o raster solicitado. "
+                    "Revise a área de interesse ou utilize --no-clip."
+                )
             window = rasterio.windows.from_bounds(left, bottom, right, top, transform=src.transform).round_offsets().round_lengths()
             data = src.read(1, window=window).astype(np.float32)
             src_transform = src.window_transform(window)

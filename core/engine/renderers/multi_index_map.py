@@ -12,24 +12,16 @@ from rasterio import Affine
 from rasterio.features import rasterize
 
 from .geoutils import extract_geometry_bounds, iterate_geometries, load_geojson
+from .options import BaseMapOptions
 from .raster import apply_smoothing, apply_unsharp_mask, generate_rgba, load_raster, upsample_raster
 
 
 @dataclass
-class MultiIndexMapOptions:
+class MultiIndexMapOptions(BaseMapOptions):
     cmap_name: str = "RdYlGn"
     vmin: Optional[float] = None
     vmax: Optional[float] = None
     opacity: float = 0.75
-    tiles: str = "CartoDB positron"
-    tile_attr: Optional[str] = None
-    padding_factor: float = 0.3
-    clip: bool = False
-    upsample: float = 1.0
-    sharpen: bool = False
-    sharpen_radius: float = 1.0
-    sharpen_amount: float = 1.2
-    smooth_radius: float = 0.0
 
 
 class MultiIndexMapRenderer:
@@ -142,20 +134,36 @@ class MultiIndexMapRenderer:
         )
 
     def _build_base_map(self, centre_lat: float, centre_lon: float) -> folium.Map:
-        if self.options.tiles.lower() == "none":
-            return folium.Map(location=[centre_lat, centre_lon], zoom_start=11, tiles=None)
         base_map = folium.Map(
             location=[centre_lat, centre_lon],
-            zoom_start=11,
-            tiles=self.options.tiles,
-            attr=self.options.tile_attr,
+            zoom_start=self.options.zoom_start,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
+            tiles=None,
         )
+        native_limit = (
+            self.options.max_native_zoom if not self.options.allow_basemap_stretch else self.options.max_zoom
+        )
+        if self.options.tiles.lower() != "none":
+            folium.TileLayer(
+                tiles=self.options.tiles,
+                attr=self.options.tile_attr,
+                name=self.options.tiles,
+                overlay=False,
+                control=True,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=native_limit,
+            ).add_to(base_map)
         folium.TileLayer(
             tiles="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
             attr="Esri World Imagery",
             name="Esri World Imagery",
             overlay=False,
             control=True,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
+            max_native_zoom=native_limit,
         ).add_to(base_map)
         return base_map
 

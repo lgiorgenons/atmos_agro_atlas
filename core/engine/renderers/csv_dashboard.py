@@ -7,24 +7,16 @@ from typing import Dict, Iterable, List, Optional, Sequence
 
 from .csv_map import CSVMapOptions, CSVMapRenderer
 from .index_map import IndexMapData, IndexMapOptions, IndexMapRenderer
+from .options import BaseMapOptions
 from .truecolor_map import TrueColorOptions, TrueColorRenderer
 
 
 @dataclass
-class CSVDashboardOptions:
+class CSVDashboardOptions(BaseMapOptions):
     colormap: str = "RdYlGn"
     opacity: float = 0.75
     vmin: Optional[float] = None
     vmax: Optional[float] = None
-    tiles: str = "CartoDB positron"
-    tile_attr: Optional[str] = None
-    padding_factor: float = 0.3
-    clip: bool = False
-    sharpen: bool = False
-    sharpen_radius: float = 1.0
-    sharpen_amount: float = 1.3
-    upsample: float = 1.0
-    smooth_radius: float = 0.0
     stretch_lower: float = 2.0
     stretch_upper: float = 98.0
 
@@ -62,6 +54,11 @@ class CSVDashboardRenderer:
                 sharpen_amount=self.options.sharpen_amount,
                 stretch_lower=self.options.stretch_lower,
                 stretch_upper=self.options.stretch_upper,
+                smooth_radius=self.options.smooth_radius,
+                zoom_start=self.options.zoom_start,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=self.options.max_native_zoom,
             )
         )
         truecolor_data = truecolor_renderer.prepare(
@@ -89,6 +86,10 @@ class CSVDashboardRenderer:
                 sharpen_radius=self.options.sharpen_radius,
                 sharpen_amount=self.options.sharpen_amount,
                 smooth_radius=self.options.smooth_radius,
+                zoom_start=self.options.zoom_start,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=self.options.max_native_zoom,
             )
         )
         index_renderer = IndexMapRenderer(
@@ -99,6 +100,17 @@ class CSVDashboardRenderer:
                 opacity=self.options.opacity,
                 tiles=self.options.tiles,
                 tile_attr=self.options.tile_attr,
+                padding_factor=self.options.padding_factor,
+                clip=self.options.clip,
+                upsample=self.options.upsample,
+                smooth_radius=self.options.smooth_radius,
+                sharpen=self.options.sharpen,
+                sharpen_radius=self.options.sharpen_radius,
+                sharpen_amount=self.options.sharpen_amount,
+                zoom_start=self.options.zoom_start,
+                min_zoom=self.options.min_zoom,
+                max_zoom=self.options.max_zoom,
+                max_native_zoom=self.options.max_native_zoom,
             )
         )
 

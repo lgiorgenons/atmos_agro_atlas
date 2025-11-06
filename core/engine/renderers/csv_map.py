@@ -12,23 +12,15 @@ from .csv_utils import build_grid, expand_to_clip_bounds, load_csv_grid
 from .geoutils import extract_geometry_bounds, load_geojson
 from .index_map import IndexMapData, IndexMapOptions, IndexMapRenderer
 from .raster import apply_smoothing, apply_unsharp_mask, upsample_raster
+from .options import BaseMapOptions
 
 
 @dataclass
-class CSVMapOptions:
+class CSVMapOptions(BaseMapOptions):
     colormap: str = "RdYlGn"
     vmin: Optional[float] = None
     vmax: Optional[float] = None
     opacity: float = 0.75
-    tiles: str = "CartoDB positron"
-    tile_attr: Optional[str] = None
-    padding_factor: float = 0.3
-    clip: bool = False
-    upsample: float = 1.0
-    sharpen: bool = False
-    sharpen_radius: float = 1.0
-    sharpen_amount: float = 1.3
-    smooth_radius: float = 0.0
 
 
 class CSVMapRenderer:
@@ -77,15 +69,29 @@ class CSVMapRenderer:
         )
 
     def render_html(self, prepared: IndexMapData, output_path: Path) -> Path:
+        common_kwargs = dict(
+            tiles=self.options.tiles,
+            tile_attr=self.options.tile_attr,
+            padding_factor=self.options.padding_factor,
+            clip=prepared.clip_bounds is not None and self.options.clip,
+            upsample=self.options.upsample,
+            smooth_radius=self.options.smooth_radius,
+            sharpen=self.options.sharpen,
+            sharpen_radius=self.options.sharpen_radius,
+            sharpen_amount=self.options.sharpen_amount,
+            zoom_start=self.options.zoom_start,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
+            max_native_zoom=self.options.max_native_zoom,
+            allow_basemap_stretch=self.options.allow_basemap_stretch,
+        )
         renderer = IndexMapRenderer(
             IndexMapOptions(
                 cmap_name=self.options.colormap,
                 vmin=self.options.vmin,
                 vmax=self.options.vmax,
                 opacity=self.options.opacity,
-                tiles=self.options.tiles,
-                tile_attr=self.options.tile_attr,
-                clip=prepared.clip_bounds is not None,
+                **common_kwargs,
             )
         )
         return renderer.render_html(prepared, output_path)
@@ -137,6 +143,10 @@ def build_csv_map(
     sharpen_amount: float = 1.3,
     upsample: float = 1.0,
     smooth_radius: float = 0.0,
+    zoom_start: int = 11,
+    min_zoom: int = 1,
+    max_zoom: int = 28,
+    max_native_zoom: int = 19,
 ) -> Path:
     renderer = CSVMapRenderer(
         CSVMapOptions(
@@ -153,6 +163,10 @@ def build_csv_map(
             sharpen_radius=sharpen_radius,
             sharpen_amount=sharpen_amount,
             smooth_radius=smooth_radius,
+            zoom_start=zoom_start,
+            min_zoom=min_zoom,
+            max_zoom=max_zoom,
+            max_native_zoom=max_native_zoom,
         )
     )
     prepared = renderer.prepare(csv_path=csv_path, overlays=overlays)

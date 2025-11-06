@@ -50,18 +50,18 @@ Legenda: [ ] pendente · [x] concluído · [~] em andamento
 
 - Fase 2 — Extração de bandas
   - [x] `SafeExtractor` padronizado (`extract` retorna dict de bandas).
-  - [ ] `FSCache` / reuso de reprojeções/arquivos.
+  - [x] `FSCache` / reuso de reprojeções/arquivos.
 
 - Fase 3 — Cálculo de índices
   - [x] `IndexCalculator` (Strategy) com NDVI, NDWI, MSI, EVI, NDRE, NDMI, NDRE1-4, CI_REDEDGE, SIPI.
-  - [ ] Novos índices (NDVIre, MCARI2, outros de clorofila/estresse).
+  - [x] Novos índices (NDVIre, MCARI2, outros de clorofila/estresse).
 
 - Fase 4 — Renderização
   - [x] Renderizadores principais migrados (`IndexMap`, `CSVMap`, `MultiIndex`, `TrueColor`, `Overlay`, `BandGallery`, `Comparison`, `CSVDashboard`).
-  - [~] Consolidar options (tiles/clip/sharpen/vmin/vmax/upsample/smooth) em tipos compartilhados para todos os renderizadores.
+  - [x] Consolidar options (tiles/clip/sharpen/vmin/vmax/upsample/smooth) em tipos compartilhados para todos os renderizadores.
 
 - Fase 5 — Exportação
-  - [ ] `CSVExporter` dedicado (atualmente funções nos renderizadores).
+  - [x] `CSVExporter` dedicado (atualmente funções nos renderizadores).
 
 - Fase 6 — Orquestração
   - [x] `WorkflowService` OO criado.
