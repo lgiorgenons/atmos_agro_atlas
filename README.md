@@ -40,9 +40,15 @@ python -m venv .venv
 source .venv/bin/activate               # ou .\.venv\Scripts\activate no Windows
 pip install -r requirements.txt
 
-# Exemplo: executar workflow completo
+# Exemplo (CLI legacy): executar workflow completo
 python scripts/run_full_workflow.py \
   --date 2025-01-10 \
+  --geojson dados/map.geojson \
+  --cloud 0 30
+
+# Novo entry point direto no core
+python -m core.scripts.run_workflow \
+  --date-range 2025-01-01 2025-01-31 \
   --geojson dados/map.geojson \
   --cloud 0 30
 

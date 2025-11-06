@@ -5,12 +5,11 @@ from datetime import date
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from core.adapters.catalog_copernicus import CopernicusClient, CopernicusConfig
 from core.cfg.settings import AppConfig
-from core.domain import AreaOfInterest
 from core.engine.index_calculator import INDEX_SPECS, IndexCalculator
-from core.engine.renderers import MultiIndexMapOptions, MultiIndexMapRenderer
 from core.engine.safe_extractor import DEFAULT_SENTINEL_BANDS, SafeExtractor
+from core.pipeline.executor import WorkflowPipeline
+from core.pipeline.models import WorkflowParameters
 
 
 @dataclass
@@ -22,9 +21,7 @@ class WorkflowResult:
 
 
 class WorkflowService:
-    """Orquestra o fluxo: baixar/extrair/calcular/renderizar.
-
-    """
+    """Orquestra o fluxo de processamento reutilizando o pipeline do core."""
 
     def __init__(
         self,
@@ -37,17 +34,10 @@ class WorkflowService:
         self.extractor = extractor or SafeExtractor(DEFAULT_SENTINEL_BANDS.copy())
         self.calculator = calculator or IndexCalculator(INDEX_SPECS)
 
-    def _client(self) -> CopernicusClient:
-        if not self.cfg.SENTINEL_USERNAME or not self.cfg.SENTINEL_PASSWORD:
-            raise RuntimeError("Credenciais Copernicus ausentes em AppConfig.")
-        return CopernicusClient(
-            CopernicusConfig(
-                username=self.cfg.SENTINEL_USERNAME,
-                password=self.cfg.SENTINEL_PASSWORD,
-                api_url=self.cfg.SENTINEL_API_URL,
-                token_url=self.cfg.SENTINEL_TOKEN_URL,
-                client_id=self.cfg.SENTINEL_CLIENT_ID,
-            )
+        self.pipeline = WorkflowPipeline(
+            self.cfg,
+            extractor=self.extractor,
+            calculator=self.calculator,
         )
 
     def run_date_range(
@@ -65,51 +55,29 @@ class WorkflowService:
         sharpen_amount: float = 1.5,
         tiles: str = "none",
         padding: float = 0.3,
+        safe_path: Optional[Path] = None,
     ) -> WorkflowResult:
-        # 1) Query/Download
-        client = self._client()
-        aoi = AreaOfInterest.from_geojson(aoi_geojson)
-        with client.open_session() as session:
-            product = client.query_latest(session, aoi, start, end, cloud)
-            if not product:
-                raise RuntimeError("Nenhum produto encontrado para os parâmetros informados.")
-            product_path = client.download(session, product, self.cfg.DATA_RAW_DIR)
-            product_title = client.infer_product_name(product_path)
-
-        # 2) Extract bands
-        work_product_dir = self.cfg.DATA_PROCESSED_DIR / product_title
-        bands = self.extractor.extract(product_path, work_product_dir)
-
-        # 3) Compute indices
-        idx_dir = work_product_dir / "indices"
-        indices_req = list(indices) if indices is not None else None
-        outputs = self.calculator.analyse_scene(bands, idx_dir, indices=indices_req)
-
-        # 4) Render multi-index map
-        self.cfg.MAPAS_DIR.mkdir(parents=True, exist_ok=True)
-        overlays = [aoi_geojson]
-        compare_all = self.cfg.MAPAS_DIR / "compare_indices_all.html"
-        renderer = MultiIndexMapRenderer(
-            MultiIndexMapOptions(
-                tiles=tiles,
-                padding_factor=padding,
-                clip=True,
-                upsample=upsample,
-                smooth_radius=smooth_radius,
-                sharpen=sharpen,
-                sharpen_radius=sharpen_radius,
-                sharpen_amount=sharpen_amount,
-            )
+        params = WorkflowParameters(
+            start=start,
+            end=end,
+            aoi_path=aoi_geojson,
+            cloud=cloud,
+            indices=list(indices) if indices is not None else None,
+            upsample=upsample,
+            smooth_radius=smooth_radius,
+            sharpen=sharpen,
+            sharpen_radius=sharpen_radius,
+            sharpen_amount=sharpen_amount,
+            tiles=tiles,
+            padding=padding,
+            safe_path=safe_path,
         )
-        renderer.render(
-            index_paths=[p for _, p in sorted(outputs.items())],
-            output_path=compare_all,
-            overlays=overlays,
-        )
-
+        result = self.pipeline.run(params).context
+        if result.product_title is None:
+            raise RuntimeError("Título do produto não definido após execução do pipeline.")
         return WorkflowResult(
-            product_title=product_title,
-            bands=bands,
-            indices=outputs,
-            maps=[compare_all],
+            product_title=result.product_title,
+            bands=result.bands,
+            indices=result.indices,
+            maps=result.maps,
         )
