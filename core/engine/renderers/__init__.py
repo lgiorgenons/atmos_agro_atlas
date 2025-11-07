@@ -1,5 +1,6 @@
 """Renderização de mapas e composições (folium)."""
 
+from .options import BaseMapOptions  # noqa: F401
 from .index_map import (  # noqa: F401
     IndexMapData,
     IndexMapOptions,
@@ -24,6 +25,7 @@ __all__ = [
     "BandGalleryOptions",
     "BandGalleryRenderer",
     "build_gallery",
+    "BaseMapOptions",
     "IndexMapData",
     "IndexMapOptions",
     "IndexMapRenderer",

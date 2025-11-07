@@ -37,8 +37,6 @@ def build_grid(lons: np.ndarray, lats: np.ndarray, values: np.ndarray) -> Tuple[
     """Convert lon/lat/value vectors into a raster grid plus transform."""
     unique_lons = np.unique(lons)
     unique_lats = np.unique(lats)[::-1]
-    if unique_lons.size * unique_lats.size != lons.size:
-        raise ValueError("Os dados nao formam uma grade regular. Garanta que o CSV veio do exportador oficial.")
 
     lon_index = {lon: idx for idx, lon in enumerate(unique_lons)}
     lat_index = {lat: idx for idx, lat in enumerate(unique_lats)}
@@ -47,8 +45,8 @@ def build_grid(lons: np.ndarray, lats: np.ndarray, values: np.ndarray) -> Tuple[
     for lon, lat, val in zip(lons, lats, values, strict=False):
         grid[lat_index[lat], lon_index[lon]] = val
 
-    lon_res = float(unique_lons[1] - unique_lons[0]) if unique_lons.size > 1 else 0.0001
-    lat_res = float(unique_lats[0] - unique_lats[1]) if unique_lats.size > 1 else 0.0001
+    lon_res = float(np.diff(unique_lons).min()) if unique_lons.size > 1 else 0.0001
+    lat_res = float(np.diff(unique_lats[::-1]).min()) if unique_lats.size > 1 else 0.0001
     lon_origin = float(unique_lons[0] - lon_res / 2)
     lat_origin = float(unique_lats[0] + lat_res / 2)
     transform = Affine.translation(lon_origin, lat_origin) * Affine.scale(lon_res, -lat_res)

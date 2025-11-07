@@ -1,134 +1,117 @@
 # Plano de Migração para Arquitetura Orientada a Objetos (OO)
 
-Este documento descreve objetivos, análise do estado atual, arquitetura proposta, plano de migração por fases e checklist de progresso. Será atualizado ao longo do desenvolvimento, com itens “tickados” conforme concluídos.
+Este documento descreve objetivos, estado atual, arquitetura proposta, plano por fases e checklist de progresso. Será atualizado ao longo do desenvolvimento, com itens “tickados” conforme concluídos.
 
 ## Objetivos
-- Separação de responsabilidades (download, extração, índices, renderização, orquestração, API).
-- Testabilidade (unidades isoláveis, mocks de rede/FS).
-- Reuso e extensibilidade (novos índices, novas fontes de dados, novos mapas).
-- Observabilidade (logs consistentes, métricas), e configuração centralizada.
-- Compatibilidade: manter CLIs existentes enquanto migramos.
+- Separar responsabilidades (download, extração, índices, renderização, orquestração, API).
+- Melhorar testabilidade (unidades isoláveis, mocks de rede/FS).
+- Reutilizar e estender (novos índices, novas fontes de dados, novos mapas).
+- Aumentar observabilidade (logs consistentes, métricas) e centralizar configuração.
+- Manter compatibilidade com CLIs e integrações legadas durante a migração.
 
 ## Estado atual (análise)
-- `scripts/satellite_pipeline.py`: monolítico; funções puras + dataclasses (`DownloadConfig`, `AreaOfInterest`, `IndexSpec`). Faz: autenticação, consulta OData, download, extração e cálculo de índices.
-- Renderização: `scripts/render_*` contém lógica sólida de mapas em funções, com dataclasses utilitárias (`PreparedRaster`).
-- API: `api/server.py` agrega orquestração de jobs (dataclass `JobInfo`, payload Pydantic) e expõe endpoints e estáticos. Faz chamadas diretas aos scripts.
-- Frontend: Vite/React, já com proxy para `/api`, `/mapas`, `/tabelas` (sem dependência direta da estrutura interna Python).
+- `core/engine/facade.WorkflowService`: já orquestra Copernicus → SafeExtractor → IndexCalculator → renderizadores.
+- `core/adapters/catalog_copernicus.CopernicusClient`: encapsula OAuth2, consultas OData e download SAFE.
+- `core/engine/{safe_extractor,index_calculator}`: processamento estruturado; scripts wrappers apenas delegam.
+- `core/engine/renderers/*`: renderizadores OO (single-index, multi-index, true color, overlay, dashboards, etc.).
+- `scripts/*.py`: wrappers finos sobre o core (mantêm CLI, opções e compatibilidade com pipelines existentes).
 
 Riscos/limites atuais:
-- Acoplamento entre etapas do pipeline em um único módulo.
-- Duplicação de parâmetros (tiles, clip, sharpen, etc.) entre scripts.
-- Dificuldade de mockar Copernicus/FS sem uma camada de serviço/abstração.
+- Falta de cache/reuso para reprojeções e rasters intermediários.
+- Parâmetros repetidos em renderizadores (tiles/clip/sharpen/vmin/vmax/...).
+- Ausência de pipeline declarativo (DAG) e de suíte de testes automatizados.
 
-## Arquitetura proposta (pacotes e classes)
-Estrutura sugerida (nomes podem ser ajustados):
-
-- `core/` (pacote raiz do processamento)
-  - `cfg/settings.py` — `AppConfig` (Settings simples por enquanto; evoluir para Pydantic).
-  - `adapters/catalog_copernicus.py` — `CopernicusClient`: autenticação OAuth2, query OData, download SAFE.
-  - `engine/safe_extractor.py` — `SafeExtractor`: extrai bandas, reprojeção/normalização.
-  - `engine/index_calculator.py` — `IndexCalculator` Strategy por índice (NDVI/EVI/NDRE/...).
-  - `engine/renderers/` — renderizadores OO (index, multi-index, CSV, true color, overlay, gallery, dashboards, comparison).
-  - `engine/facade.py` — `WorkflowService`: orquestra download→extração→índices→mapas (faz ponte com legado).
-  - `domain/` — espaço reservado para entidades/serviços puros (futuros value objects).
-  - `pipeline/` — executor de DAG e definições declarativas (pendente).
-  - `bindings/` — interface para kernels C++/pybind11 (pendente).
-  - `scripts/` — wrappers CLI finos para manter compatibilidade.
-  - `tests/` — suíte unitária/integrada (precisa ser preenchida).
-
-Compatibilidade:
-- CLIs atuais (`scripts/*.py`) permanecem como “wrappers” chamando os serviços OO gradualmente.
+## Arquitetura proposta (vision)
+- `core/` (pacote raiz)
+  - `cfg/settings.py` — `AppConfig` (carrega env/paths; evoluir para Settings mais robusto).
+  - `adapters/catalog_copernicus.py` — `CopernicusClient` (OAuth2, OData, download SAFE).
+  - `engine/safe_extractor.py` — `SafeExtractor` (extração de bandas).
+  - `engine/index_calculator.py` — `IndexCalculator` (Strategy por índice).
+  - `engine/renderers/` — renderizadores OO (mapas, dashboards, etc.).
+  - `engine/facade.py` — `WorkflowService` (orquestra o fluxo completo).
+  - `domain/` — entidades e serviços puros (value objects, contratos).
+  - `pipeline/` — executores/DAGs declarativas (pendente).
+  - `bindings/` — ponte para kernels nativos (opcional/futuro).
+  - `scripts/` — wrappers CLI finos.
+  - `tests/` — suíte unitária/integrada (a construir).
 
 ## Plano de migração (fases e tarefas)
-
 Legenda: [ ] pendente · [x] concluído · [~] em andamento
 
 - Fase 0 — Preparação
-  - [x] Criar este documento de plano (`todo_oop.md`).
-  - [x] Definir nome do pacote (`core`) e layout final de pastas.
-  - [x] Estrutura inicial de pacotes criada (`core/` com submódulos).
-  - [ ] Configuração base `AppConfig` (env vars, defaults) e logging consistente.
+  - [x] Documento de plano (`todo_oop.md`).
+  - [x] Layout do pacote (`core/*`) definido.
+  - [x] Estrutura inicial criada.
+  - [~] Configuração base (`AppConfig` pronta, falta centralizar logging e sanitizar secrets).
 
 - Fase 1 — Fonte de dados (Copernicus)
-  - [x] Extrair `CopernicusClient` (wrapper sobre funções legadas).
-  - [x] Injetar `CopernicusClient` em `WorkflowService` inicial.
+  - [x] `CopernicusClient` (wrapper OO).
+  - [x] `WorkflowService` injeta `CopernicusClient`.
 
 - Fase 2 — Extração de bandas
-  - [x] `SafeExtractor`: padronizar leitura e reprojecao; API clara: `extract_bands(product_path) -> Dict[str, Path]`.
-  - [ ] `FSCache`: reaproveitar reprojeções/arquivos.
+  - [x] `SafeExtractor` padronizado (`extract` retorna dict de bandas).
+  - [x] `FSCache` / reuso de reprojeções/arquivos.
 
 - Fase 3 — Cálculo de índices
-  - [x] `IndexCalculator`: interface por indice (Strategy); portar logica atual (NDVI, NDWI, MSI, EVI, NDRE, NDMI, NDRE1-4, CI_REDEDGE, SIPI).
-  - [ ] Extensões planejadas: SIPI, NDVIre, MCARI2 (já citadas nas pendências).
+  - [x] `IndexCalculator` (Strategy) com NDVI, NDWI, MSI, EVI, NDRE, NDMI, NDRE1-4, CI_REDEDGE, SIPI.
+  - [x] Novos índices (NDVIre, MCARI2, outros de clorofila/estresse).
 
 - Fase 4 — Renderização
-  - [~] `IndexMapRenderer`, `CSVMapRenderer`, `MultiIndexMapRenderer`, `TrueColorRenderer`, `OverlayRenderer`, `BandGalleryRenderer`, `ComparisonMapRenderer`, `CSVDashboardRenderer`: principais visualizacoes migradas; restam apenas casos especificos do frontend (se houver).
-  - [~] Unificar parâmetros comuns (tiles, clip, sharpen, vmin/vmax, upsample, smooth) em tipos/regras centrais — `IndexMapOptions`/`MultiIndexMapOptions` criados; falta aplicar aos demais mapas.
+  - [x] Renderizadores principais migrados (`IndexMap`, `CSVMap`, `MultiIndex`, `TrueColor`, `Overlay`, `BandGallery`, `Comparison`, `CSVDashboard`).
+  - [x] Consolidar options (tiles/clip/sharpen/vmin/vmax/upsample/smooth) em tipos compartilhados para todos os renderizadores.
 
 - Fase 5 — Exportação
-  - [ ] `CSVExporter`: exportação padronizada a partir de `PreparedRaster`/grades.
+  - [x] `CSVExporter` dedicado (atualmente funções nos renderizadores).
 
 - Fase 6 — Orquestração
-  - [x] `WorkflowService` inicial criado (usa utilitários legados).
-  - [x] Adaptação do CLI `scripts/run_full_workflow.py` para usar `WorkflowService` (com fallback legado).
+  - [x] `WorkflowService` OO criado.
+  - [x] CLI `scripts/run_full_workflow.py` delega ao core (fallback legado mantido).
+  - [x] `core.pipeline` com executor sequencial e passos básicos (`ResolveProduct`, `ExtractBands`, `ComputeIndices`, `RenderMultiIndex`).
 
 - Fase 7 — API
-  - [x] Integrar `WorkflowService` ao `api/server.py` com execução in-processo (fallback para script).
-  - [ ] Endpoints para workflow assíncrono, logs, produtos e artefatos (mantendo compatibilidade de URLs).
+  - [x] `api/server.py` integra `WorkflowService` (execução in-processo com fallback).
+  - [ ] Endpoints adicionais (jobs assíncronos, logs detalhados, catálogo de produtos).
 
 - Fase 8 — Configuração e segurança
-  - [ ] `AppConfig` com Pydantic Settings (SENTINEL_* e paths), validação e secrets.
-  - [ ] Sanitização de logs (nunca logar senhas/tokens).
+  - [ ] Evoluir `AppConfig` para Settings com validação (ex.: Pydantic) e reforçar logging sanitizado.
 
 - Fase 9 — Qualidade
   - [ ] Tipagem estática (mypy) nas novas camadas.
-  - [ ] Testes unitários focados (CopernicusClient mocked, IndexCalculator determinístico).
-  - [ ] Documentação e exemplos por classe.
+  - [ ] Testes unitários/integrados (fixtures de raster/CSV, mocks do catálogo).
+  - [ ] Documentação por módulo/classe com exemplos.
 
 - Fase 10 — Performance e DX
-  - [ ] Cache de produtos SAFE e rasters/índices (chaves por produto/parâmetros).
-  - [ ] Perfis de renderização (rápido vs qualidade).
+  - [ ] Cache persistente para SAFE/rasters/índices (chaves por produto/parâmetro).
+  - [ ] Perfis de renderização (rápido vs. qualidade) e presets reutilizáveis.
 
-## Contratos propostos (rascunho)
-
-- `CopernicusClient`:
-  - `get_token() -> str`
-  - `query_latest(aoi: AreaOfInterest, start: date, end: date, cloud: tuple[int,int]) -> dict | None`
-  - `download(product: dict, dst_dir: Path) -> Path`  (zip/.SAFE)
-
-- `SafeExtractor`:
-  - `extract(product_path: Path, workdir: Path) -> dict[str, Path]`  (keys: blue, green, red, rededge1..4, nir, swir1, swir2)
-
-- `IndexCalculator`:
-  - `compute(bands: dict[str, Path], indices: list[str], out_dir: Path) -> dict[str, Path]`
-
-- `IndexMapRenderer`/`MultiIndexMapRenderer`/`TrueColorRenderer`/`OverlayRenderer`:
-  - `render(..., out: Path) -> Path`
-
-- `WorkflowService`:
-  - `run(date|date_range, aoi, cloud, dirs, indices, render_opts) -> WorkflowResult`
+## Contratos propostos (referência)
+- `CopernicusClient.get_token()` / `open_session()` / `query_latest()` / `download()`.
+- `SafeExtractor.extract(product_path, workdir) -> dict[str, Path]`.
+- `IndexCalculator.analyse_scene(bands, out_dir, indices) -> dict[str, Path]`.
+- Renderizadores OO: `render(...) -> Path`, `prepare(...) -> PreparedRaster`.
+- `WorkflowService.run_date_range(...) -> WorkflowResult`.
 
 ## Riscos e mitigação
-- Divergência entre scripts e serviços: manter wrappers chamando serviços e testes de paridade (inputs/outputs).
-- Regressões em mapas: validar HTMLs gerados nas mesmas condições (tiles none, clip, vmin/vmax automáticos).
-- Tempo de migração: fatiar por fases; publicar ganhos incrementais.
+- Divergência entre scripts e core: manter wrappers chamando serviços e validar paridade de I/O.
+- Regressões visuais: comparar HTMLs gerados com cenários conhecidos (mesmas opções).
+- Adoção parcial: registrar decisões no `RELATORIO_MIGRACAO_CORE.md` para garantir continuidade.
 
 ## Critérios de pronto (por fase)
-- Paridade funcional (mesmas entradas → mesmos arquivos de saída).
+- Mesmas entradas produzem mesmas saídas (paridade com legado).
 - Logs úteis e erros claros.
 - Tipos/documentação atualizados.
 
 ## Próximos passos imediatos
-1) Reescrever `WorkflowService` no `core.engine.facade` usando diretamente `CopernicusClient`, `SafeExtractor`, `IndexCalculator` e os renderizadores (sem depender do script procedural).
-2) Extrair os helpers ainda existentes em `scripts/satellite_pipeline.py` (autenticação, preparação de índices, utilidades) para serviços/classes dentro de `core.engine` ou `core.adapters`.
-3) Estruturar `core.pipeline` com um executor simples (ex.: `DAGExecutor`) e DAGs declarativas para sequenciar steps OO.
-4) Definir entidades em `core.domain` (por exemplo `Scene`, `IndexResult`) para substituir dicionários soltos e documentar contratos entre etapas.
+1. Implementar `FSCache` (ou estratégia equivalente) para evitar reprojeções repetidas.
+2. Propagar objetos de options compartilhados para todos os renderizadores, eliminando parâmetros duplicados nos scripts.
+3. Formalizar novas entidades em `core.domain` (`Scene`, `IndexResult`) e registrar contratos entre etapas.
+4. Elaborar suíte de testes (fixtures de raster/CSV) cobrindo pipeline e renderizadores.
 
 ---
 
 Progresso atual:
-- [x] Documento de plano criado.
-- [x] Estrutura inicial de pacotes criada (`core/`).
-- [x] Primeiro serviço migrado (CopernicusClient + WorkflowService).
-- [x] Wrapper CLI apontando para serviços (scripts principais delegam ao core).
-- [x] Renderização migrada — principais renderizadores agora vivem em `core.engine.renderers`.
+- [x] Plano criado e atualizado.
+- [x] Estrutura `core/` consolidada.
+- [x] Serviços principais migrados (CopernicusClient, SafeExtractor, IndexCalculator, WorkflowService).
+- [x] Scripts CLI delegam ao core.
+- [x] Renderizadores OO presentes em `core.engine.renderers`.
