@@ -181,6 +181,17 @@ class MultiIndexMapRenderer:
             max_zoom=self.options.max_zoom,
             max_native_zoom=native_limit,
         ).add_to(base_map)
+
+        folium.TileLayer(
+            tiles="https://api.mapbox.com/styles/v1/mapbox/satellite-streets-v12/tiles/256/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpamY4dnk3YTAyM3Z0eHBndTRvcXg1dmYifQ._K7HwvfVtZQwXu-WZp9lag",
+            attr="Mapbox Satellite Streets",
+            name="Mapbox",
+            overlay=False,
+            control=True,
+            min_zoom=self.options.min_zoom,
+            max_zoom=self.options.max_zoom,
+            max_native_zoom=22,
+        ).add_to(base_map)
         return base_map
 
     def _attach_panel(
@@ -189,9 +200,11 @@ class MultiIndexMapRenderer:
         index_layers: Sequence[Dict[str, str]],
         geo_layer_names: Sequence[str],
     ) -> None:
+        entries = [{"name": "Mapa base", "layer_id": "__base__"}]
+        entries.extend(index_layers)
         panel = _IndexPanelMacro(
             map_id=base_map.get_name(),
-            index_layers=index_layers,
+            index_layers=entries,
             geo_layer_names=geo_layer_names,
         )
         base_map.get_root().add_child(panel)
@@ -239,7 +252,7 @@ class _IndexPanelMacro(MacroElement):
 <style>
     #index-panel {
         position: absolute;
-        top: 15px;
+        top: 75px;
         left: 15px;
         width: 320px;
         max-height: calc(100% - 30px);
@@ -292,6 +305,16 @@ class _IndexPanelMacro(MacroElement):
         background: rgba(255,255,255,0.08);
         padding: 10px;
     }
+    .talhao-tooltip {
+        background: rgba(255, 255, 255, 0.95);
+        color: #111;
+        border-radius: 14px;
+        border: 1px solid rgba(0,0,0,0.2);
+        padding: 4px 12px;
+        font-weight: 600;
+        font-size: 1rem;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+    }
 </style>
 <div id="index-panel" class="hidden">
     <h3>
@@ -318,8 +341,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const listItems = document.querySelectorAll('#index-panel-list li');
     const indexLayers = {{ this.index_json }};
     const geoLayerNames = {{ this.geo_json }};
+    const overlayEntries = indexLayers.filter(entry => entry.layer_id !== "__base__");
+    const hasBaseEntry = indexLayers.some(entry => entry.layer_id === "__base__");
     let mapObj = window["{{ this.map_id }}"];
-
     if (!mapObj) {
         return;
     }
@@ -333,10 +357,10 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function setActiveLayer(layerId) {
-        indexLayers.forEach(entry => {
+        overlayEntries.forEach(entry => {
             const layer = window[entry.layer_id];
             if (!layer) return;
-            if (entry.layer_id === layerId) {
+            if (layerId === entry.layer_id) {
                 if (!mapObj.hasLayer(layer)) {
                     mapObj.addLayer(layer);
                 }
@@ -344,6 +368,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 mapObj.removeLayer(layer);
             }
         });
+        if (layerId === "__base__") {
+            overlayEntries.forEach(entry => {
+                const layer = window[entry.layer_id];
+                if (layer && mapObj.hasLayer(layer)) {
+                    mapObj.removeLayer(layer);
+                }
+            });
+        }
         listItems.forEach(item => item.classList.toggle('active', item.dataset.layerId === layerId));
         panel.classList.remove('hidden');
     }
@@ -365,6 +397,17 @@ document.addEventListener('DOMContentLoaded', function() {
             const geoLayer = window[name];
             if (!geoLayer) return;
             geoLayer.eachLayer(function(layer) {
+                layer.bindTooltip(
+                    '<div class="talhao-tooltip">talhão-teste</div>',
+                    {
+                        permanent: true,
+                        direction: 'top',
+                        offset: [0, -12],
+                        sticky: false,
+                        className: '',
+                        opacity: 1,
+                    }
+                );
                 layer.on('click', function() {
                     highlightLayer(layer);
                     showTalhaoInfo(layer.feature || {});
@@ -378,7 +421,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     mapObj.whenReady(function() {
         if (listItems.length) {
-            setActiveLayer(listItems[0].dataset.layerId);
+            const defaultId = hasBaseEntry ? "__base__" : listItems[0].dataset.layerId;
+            setActiveLayer(defaultId);
         }
         wireGeojsonClicks();
     });
