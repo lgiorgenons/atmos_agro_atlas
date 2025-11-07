@@ -4,9 +4,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
+import json
+
 import folium
 import numpy as np
 from branca.colormap import LinearColormap
+from branca.element import MacroElement, Template
 from matplotlib import colormaps, colors
 from rasterio import Affine
 from rasterio.features import rasterize
@@ -22,6 +25,7 @@ class MultiIndexMapOptions(BaseMapOptions):
     vmin: Optional[float] = None
     vmax: Optional[float] = None
     opacity: float = 0.75
+    enable_panel: bool = False
 
 
 class MultiIndexMapRenderer:
@@ -59,6 +63,7 @@ class MultiIndexMapRenderer:
         centre_lon = (min_lon + max_lon) / 2
 
         base_map = self._build_base_map(centre_lat, centre_lon)
+        layer_entries: List[Dict[str, str]] = []
 
         for position, idx_path in enumerate(index_paths):
             data, transform, bounds = load_raster(idx_path, clip_bounds_wgs84=clip_bounds)
@@ -93,9 +98,17 @@ class MultiIndexMapRenderer:
                 opacity=1.0,
             ).add_to(feature)
             feature.add_to(base_map)
+            layer_entries.append({"name": Path(idx_path).stem.upper(), "layer_id": feature.get_name()})
 
+        geo_layer_names: List[str] = []
         for geojson_data in overlay_geojsons:
-            folium.GeoJson(data=geojson_data, name="AOI", style_function=lambda _: {"fillOpacity": 0}).add_to(base_map)
+            geo_layer = folium.GeoJson(
+                data=geojson_data,
+                name="AOI",
+                style_function=lambda _: {"fillOpacity": 0, "color": "#3388ff", "weight": 3},
+            )
+            geo_layer.add_to(base_map)
+            geo_layer_names.append(geo_layer.get_name())
 
         linear = LinearColormap(
             [colors.rgb2hex(colormaps[self.options.cmap_name](x)) for x in np.linspace(0, 1, 10)],
@@ -105,7 +118,10 @@ class MultiIndexMapRenderer:
         linear.caption = f"{self.options.cmap_name} (escala relativa por camada)"
         linear.add_to(base_map)
 
-        folium.LayerControl(collapsed=False).add_to(base_map)
+        if self.options.enable_panel and layer_entries:
+            self._attach_panel(base_map, layer_entries, geo_layer_names)
+        else:
+            folium.LayerControl(collapsed=False).add_to(base_map)
         output_path.parent.mkdir(parents=True, exist_ok=True)
         base_map.save(str(output_path))
         return output_path
@@ -167,6 +183,19 @@ class MultiIndexMapRenderer:
         ).add_to(base_map)
         return base_map
 
+    def _attach_panel(
+        self,
+        base_map: folium.Map,
+        index_layers: Sequence[Dict[str, str]],
+        geo_layer_names: Sequence[str],
+    ) -> None:
+        panel = _IndexPanelMacro(
+            map_id=base_map.get_name(),
+            index_layers=index_layers,
+            geo_layer_names=geo_layer_names,
+        )
+        base_map.get_root().add_child(panel)
+
     @staticmethod
     def _mask_with_geojson(
         data: np.ndarray,
@@ -188,6 +217,202 @@ class MultiIndexMapRenderer:
             dtype=np.uint8,
         )
         return np.where(mask == 1, data, np.nan)
+
+
+class _IndexPanelMacro(MacroElement):
+    def __init__(
+        self,
+        *,
+        map_id: str,
+        index_layers: Sequence[Dict[str, str]],
+        geo_layer_names: Sequence[str],
+    ) -> None:
+        super().__init__()
+        self._name = "IndexPanelMacro"
+        self.map_id = map_id
+        self.index_entries = list(index_layers)
+        self.index_json = json.dumps(index_layers)
+        self.geo_json = json.dumps(list(geo_layer_names))
+        self._template = Template(
+            """
+{% macro html(this, kwargs) %}
+<style>
+    #index-panel {
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        width: 320px;
+        max-height: calc(100% - 30px);
+        background: rgba(16, 22, 30, 0.95);
+        color: #f1f1f1;
+        border-radius: 8px;
+        box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+        padding: 16px;
+        overflow-y: auto;
+        z-index: 1000;
+        transition: opacity 0.2s ease;
+    }
+    #index-panel.hidden {
+        opacity: 0;
+        pointer-events: none;
+    }
+    #index-panel h3 {
+        margin: 0 0 12px;
+        font-size: 1.05rem;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    #index-panel button {
+        border: none;
+        background: transparent;
+        color: inherit;
+        font-size: 1.2rem;
+        cursor: pointer;
+    }
+    #index-panel ul {
+        list-style: none;
+        margin: 0 0 12px;
+        padding: 0;
+    }
+    #index-panel li {
+        padding: 8px 10px;
+        margin-bottom: 6px;
+        border-radius: 5px;
+        background: rgba(255,255,255,0.05);
+        cursor: pointer;
+    }
+    #index-panel li.active {
+        background: #ffd43b;
+        color: #1f1f1f;
+        font-weight: 600;
+    }
+    #index-panel .talhao-box {
+        border-radius: 5px;
+        background: rgba(255,255,255,0.08);
+        padding: 10px;
+    }
+</style>
+<div id="index-panel" class="hidden">
+    <h3>
+        Índices por talhão
+        <button id="index-panel-close">×</button>
+    </h3>
+    <div>
+        <p><strong>Selecione um índice:</strong></p>
+        <ul id="index-panel-list">
+        {% for entry in this.index_entries %}
+            <li data-layer-id="{{ entry.layer_id }}">{{ entry.name }}</li>
+        {% endfor %}
+        </ul>
+    </div>
+    <div class="talhao-box" id="talhao-info">
+        <p>Selecione um talhão no mapa.</p>
+    </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const panel = document.getElementById('index-panel');
+    const closeBtn = document.getElementById('index-panel-close');
+    const infoBox = document.getElementById('talhao-info');
+    const listItems = document.querySelectorAll('#index-panel-list li');
+    const indexLayers = {{ this.index_json }};
+    const geoLayerNames = {{ this.geo_json }};
+    let mapObj = window["{{ this.map_id }}"];
+
+    if (!mapObj) {
+        return;
+    }
+
+    function highlightLayer(layer) {
+        if (window.activePolygon && window.activePolygon !== layer) {
+            window.activePolygon.setStyle({ color: "#3388ff", weight: 3 });
+        }
+        layer.setStyle({ color: "#ffd43b", weight: 5 });
+        window.activePolygon = layer;
+    }
+
+    function setActiveLayer(layerId) {
+        indexLayers.forEach(entry => {
+            const layer = window[entry.layer_id];
+            if (!layer) return;
+            if (entry.layer_id === layerId) {
+                if (!mapObj.hasLayer(layer)) {
+                    mapObj.addLayer(layer);
+                }
+            } else if (mapObj.hasLayer(layer)) {
+                mapObj.removeLayer(layer);
+            }
+        });
+        listItems.forEach(item => item.classList.toggle('active', item.dataset.layerId === layerId));
+        panel.classList.remove('hidden');
+    }
+
+    function showTalhaoInfo(feature) {
+        const props = feature.properties || {};
+        infoBox.innerHTML = `
+            <p><strong>ID:</strong> ${feature.id ?? '---'}</p>
+            <p><strong>Área:</strong> ${props.area ?? '---'} ha</p>
+            <p><strong>Variedade:</strong> ${props.variedade ?? '---'}</p>
+            <p><strong>Observações:</strong> ${props.observacoes ?? '---'}</p>
+        `;
+        panel.classList.remove('hidden');
+    }
+
+    function wireGeojsonClicks() {
+        const names = Array.isArray(geoLayerNames) ? geoLayerNames : [geoLayerNames];
+        names.forEach(name => {
+            const geoLayer = window[name];
+            if (!geoLayer) return;
+            geoLayer.eachLayer(function(layer) {
+                layer.on('click', function() {
+                    highlightLayer(layer);
+                    showTalhaoInfo(layer.feature || {});
+                });
+            });
+        });
+    }
+
+    listItems.forEach(item => item.addEventListener('click', () => setActiveLayer(item.dataset.layerId)));
+    closeBtn.addEventListener('click', () => panel.classList.add('hidden'));
+
+    mapObj.whenReady(function() {
+        if (listItems.length) {
+            setActiveLayer(listItems[0].dataset.layerId);
+        }
+        wireGeojsonClicks();
+    });
+});
+</script>
+
+        const activateDefault = () => {
+            if (listItems.length) {
+                setActiveLayer(listItems[0].dataset.layerId);
+            }
+            wireGeojsonClicks();
+        };
+
+        if (mapObj._loaded) {
+            activateDefault();
+        } else {
+            mapObj.whenReady(activateDefault);
+        }
+        return true;
+    }
+
+    if (!initialize()) {
+        const interval = setInterval(() => {
+            if (initialize()) {
+                clearInterval(interval);
+            }
+        }, 100);
+        window.addEventListener("load", () => initialize());
+    }
+})();
+</script>
+{% endmacro %}
+"""
+        )
 
 
 def build_multi_map(
